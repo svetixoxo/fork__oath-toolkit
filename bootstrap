@@ -1,0 +1,152 @@
+#!/bin/sh
+
+# Copyright (C) 2023-2025 Simon Josefsson
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+printf "gdoc_MANS =\ngdoc_TEXINFOS =\n" > liboath/man/Makefile.gdoc
+printf "gdoc_MANS =\ngdoc_TEXINFOS =\n" > libpskc/man/Makefile.gdoc
+
+touch ChangeLog
+
+mkdir liboath/m4 oathtool/m4 libpskc/m4 pskctool/m4 pam_oath/m4
+
+if command -v gtkdocize > /dev/null; then
+    cd liboath
+    gtkdocize --copy
+    cd ..
+
+    cd libpskc
+    gtkdocize --copy
+    cd ..
+else
+    echo "warning: gtkdocize missing -- gtk-doc manual will be missing"
+
+    # Pacify autoreconf's invocation of gtkdocize.
+    GTKDOCIZE="true gtkdocize"
+    export GTKDOCIZE
+
+    # rm because gtk-doc.make might be a link to a protected file
+    rm -f liboath/gtk-doc.make libpskc/gtk-doc.make
+    echo "EXTRA_DIST =" > liboath/gtk-doc.make
+    echo "CLEANFILES =" >> liboath/gtk-doc.make
+    echo "EXTRA_DIST =" > libpskc/gtk-doc.make
+    echo "CLEANFILES =" >> libpskc/gtk-doc.make
+fi
+
+gnulib-tool --import \
+  --local-dir=gl/override \
+  --lib=libgnu \
+  --source-base=gl \
+  --m4-base=gl/m4 \
+  --doc-base=doc \
+  --tests-base=gl/tests \
+  --aux-dir=build-aux \
+  --no-conditional-dependencies \
+  --libtool \
+  --macro-prefix=gl \
+  --no-vc-files \
+  announce-gen \
+  autobuild \
+  do-release-commit-and-tag \
+  error \
+  getline \
+  git-version-gen \
+  gitlog-to-changelog \
+  maintainer-makefile \
+  parse-datetime \
+  parse-duration \
+  progname \
+  read-file \
+  update-copyright \
+  vasprintf \
+  version-etc \
+  version-stamp
+rm -fv doc/parse-datetime.texi
+
+cd liboath
+gnulib-tool --import \
+  --local-dir=gl/override \
+  --lib=libgnu \
+  --source-base=gl \
+  --m4-base=gl/m4 \
+  --doc-base=doc \
+  --tests-base=gl/tests \
+  --aux-dir=build-aux \
+  --lgpl=2 \
+  --no-conditional-dependencies \
+  --libtool \
+  --macro-prefix=gl \
+  base32 \
+  c-ctype \
+  crypto/gc-hmac-sha1 \
+  crypto/gc-hmac-sha256 \
+  crypto/gc-hmac-sha512 \
+  fclose \
+  fopen-gnu \
+  fseeko \
+  fsync \
+  getline \
+  lib-symbol-versions \
+  lib-symbol-visibility \
+  manywarnings \
+  rename \
+  snprintf \
+  strdup-posix \
+  strptime \
+  strtok_r \
+  strverscmp \
+  sys_stat-h \
+  unlink \
+  valgrind-tests
+cd ..
+
+cd libpskc
+gnulib-tool --import \
+  --local-dir=gl/override \
+  --lib=libgnu \
+  --source-base=gl \
+  --m4-base=gl/m4 \
+  --doc-base=doc \
+  --tests-base=gl/tests \
+  --aux-dir=build-aux \
+  --lgpl=2 \
+  --no-conditional-dependencies \
+  --libtool \
+  --macro-prefix=gl \
+  base64 \
+  free-posix \
+  inttostr \
+  lib-symbol-versions \
+  lib-symbol-visibility \
+  manywarnings \
+  minmax \
+  strptime \
+  strverscmp \
+  valgrind-tests
+cd ..
+
+autoreconf --force --install
+
+# Without running 'automake' after 'autoreconf', you will get the
+# following diff between a 'make dist' and a 'make release' tarball
+# when building GitLab CI/CD for a tag event.
+#
+# │ ├── oath-toolkit-2.6.13/Makefile.in
+# │ │ -   build-aux/config.guess build-aux/config.sub build-aux/depcomp \
+# │ │ -   build-aux/install-sh build-aux/ltmain.sh build-aux/missing \
+# │ │ -   build-aux/ylwrap
+# │ │ +   build-aux/config.guess build-aux/config.sub \
+# │ │ +   build-aux/install-sh build-aux/ltmain.sh build-aux/missing
+automake --no-force

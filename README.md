@@ -1,4 +1,4 @@
-This is an fork/mirror/clone from: https://oath-toolkit.codeberg.page
+This is a fork/mirror/clone from: https://oath-toolkit.codeberg.page
 
 # OATH Toolkit README
 
